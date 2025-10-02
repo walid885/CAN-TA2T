@@ -1,0 +1,14 @@
+{
+    "broker": {
+        "host": "localhost",
+        "port": 1883,
+        "keepalive": 60
+    },
+    "topics": {
+        "raw_can": "vehicle/can/raw",
+        "decoded": "vehicle/can/decoded",
+        "status": "vehicle/status"
+    },
+    "qos": 1,
+    "client_id": "can_backend_server"
+}

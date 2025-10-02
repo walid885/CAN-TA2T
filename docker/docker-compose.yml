@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  mosquitto:
+    build:
+      context: .
+      dockerfile: Dockerfile.mosquitto
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_logs:/mosquitto/log
+
+  timescaledb:
+    image: timescale/timescaledb:latest-pg14
+    environment:
+      POSTGRES_PASSWORD: canmonitor
+      POSTGRES_DB: vehicle_monitoring
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    depends_on:
+      - mosquitto
+      - timescaledb
+    ports:
+      - "8080:8080"
+    environment:
+      MQTT_BROKER: mosquitto
+      DB_HOST: timescaledb
+      DB_NAME: vehicle_monitoring
+    volumes:
+      - ./config:/app/config
+
+volumes:
+  mosquitto_data:
+  mosquitto_logs:
+  timescale_data:

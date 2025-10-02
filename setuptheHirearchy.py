@@ -462,13 +462,13 @@ def create_file_with_template(file_path: Path):
         return
     
     filename = file_path.name
+    ext = file_path.suffix
     
     # Get template if available
     if filename in FILE_TEMPLATES:
         content = FILE_TEMPLATES[filename]
     else:
         # Generate default content based on file extension
-        ext = file_path.suffix
         content = generate_default_content(filename, ext)
     
     # Write file
