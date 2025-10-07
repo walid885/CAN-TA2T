@@ -1,0 +1,6 @@
+in this part of the project, we are going to work on the simulation, from a software prespective , in the CAN architecutre : 
+to do this : 
+1/ study can hierharchy 
+2/ how to simulate them
+3/ what is the supposed simulation is going to look like 
+4/ how to resolve this program. 
