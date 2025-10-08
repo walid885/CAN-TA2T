@@ -3,7 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import { createServer } from 'http';
-import routes from './routes/index.js';
+import routes from './src/routes/index.js';
 import { setupWebSocket } from './websocket/wsServer.js';
 import dotenv from 'dotenv';
 

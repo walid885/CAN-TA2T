@@ -1,5 +1,5 @@
 import { WebSocketServer } from 'ws';
-import pool from '../config/database.js';
+import pool from '/home/walid/Desktop/CAN-TA2T/backend/src/config/database.js';
 
 let clients = new Set();
 let intervalId = null;
