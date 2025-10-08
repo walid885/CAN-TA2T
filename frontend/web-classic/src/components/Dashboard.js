@@ -1,6 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Grid, Paper, Box, AppBar, Toolbar, Typography, IconButton } from '@mui/material';
-import { Settings, Download } from '@mui/icons-material';
+import { 
+  Grid, 
+  Paper, 
+  Box, 
+  AppBar, 
+  Toolbar, 
+  Typography, 
+  IconButton,
+  Snackbar,
+  Alert
+} from '@mui/material';
+import { Settings, Download, Notifications } from '@mui/icons-material';
 import MetricCard from './MetricCard';
 import TimeSeriesChart from './TimeSeriesChart';
 import DistributionChart from './DistributionChart';
@@ -8,6 +18,7 @@ import CorrelationMatrix from './CorrelationMatrix';
 import AnomalyList from './AnomalyList';
 import MessageRateChart from './MessageRateChart';
 import ControlPanel from './ControlPanel';
+import StatsPanel from './StatsPanel';
 import wsService from '../services/websocket';
 import { api } from '../services/api';
 
@@ -19,24 +30,20 @@ export default function Dashboard() {
   const [showControls, setShowControls] = useState(false);
   const [correlations, setCorrelations] = useState([]);
   const [messageRate, setMessageRate] = useState([]);
+  const [notification, setNotification] = useState({ open: false, message: '', severity: 'info' });
+  const [wsConnected, setWsConnected] = useState(false);
 
   useEffect(() => {
     wsService.connect();
     const unsubscribe = wsService.subscribe((data) => {
       if (data.type === 'update') {
         setLatestData(data.data);
+        setWsConnected(true);
       }
     });
 
-    fetchTimeSeries();
-    fetchCorrelations();
-    fetchMessageRate();
-
-    const interval = setInterval(() => {
-      fetchTimeSeries();
-      fetchCorrelations();
-      fetchMessageRate();
-    }, 5000);
+    fetchAllData();
+    const interval = setInterval(fetchAllData, 5000);
 
     return () => {
       unsubscribe();
@@ -45,31 +52,31 @@ export default function Dashboard() {
     };
   }, [timeRange]);
 
-  const fetchTimeSeries = async () => {
+  const fetchAllData = async () => {
     try {
-      const response = await api.getAllTimeSeries(timeRange, '1 second');
-      setTimeSeriesData(response.data);
+      await Promise.all([
+        fetchTimeSeries(),
+        fetchCorrelations(),
+        fetchMessageRate()
+      ]);
     } catch (err) {
-      console.error('Error fetching time series:', err);
+      showNotification('Error fetching data', 'error');
     }
+  };
+
+  const fetchTimeSeries = async () => {
+    const response = await api.getAllTimeSeries(timeRange, '1 second');
+    setTimeSeriesData(response.data);
   };
 
   const fetchCorrelations = async () => {
-    try {
-      const response = await api.getCorrelations(timeRange);
-      setCorrelations(response.data);
-    } catch (err) {
-      console.error('Error fetching correlations:', err);
-    }
+    const response = await api.getCorrelations(timeRange);
+    setCorrelations(response.data);
   };
 
   const fetchMessageRate = async () => {
-    try {
-      const response = await api.getMessageRate(timeRange);
-      setMessageRate(response.data);
-    } catch (err) {
-      console.error('Error fetching message rate:', err);
-    }
+    const response = await api.getMessageRate(timeRange);
+    setMessageRate(response.data);
   };
 
   const handleExport = async (format) => {
@@ -85,18 +92,48 @@ export default function Dashboard() {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      showNotification(`Exported successfully as ${format.toUpperCase()}`, 'success');
     } catch (err) {
-      console.error('Export error:', err);
+      showNotification('Export failed', 'error');
     }
+  };
+
+  const handleRefresh = () => {
+    fetchAllData();
+    showNotification('Data refreshed', 'success');
+  };
+
+  const showNotification = (message, severity = 'info') => {
+    setNotification({ open: true, message, severity });
   };
 
   return (
     <Box sx={{ flexGrow: 1, bgcolor: '#0a0e27', minHeight: '100vh' }}>
-      <AppBar position="static" sx={{ bgcolor: '#1a1f3a' }}>
+      <AppBar position="static" sx={{ bgcolor: '#1a1f3a', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
         <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            CAN Bus Analytics Dashboard
+          <Typography variant="h5" sx={{ flexGrow: 1, fontWeight: 700 }}>
+            🚗 CAN Bus Analytics Dashboard
           </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box
+              sx={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                bgcolor: wsConnected ? '#10b981' : '#ef4444',
+                animation: wsConnected ? 'pulse 2s infinite' : 'none',
+                '@keyframes pulse': {
+                  '0%, 100%': { opacity: 1 },
+                  '50%': { opacity: 0.5 }
+                }
+              }}
+            />
+            <Typography variant="caption" sx={{ color: '#8892b0', mr: 2 }}>
+              {wsConnected ? 'Connected' : 'Disconnected'}
+            </Typography>
+          </Box>
           <IconButton color="inherit" onClick={() => handleExport('csv')}>
             <Download />
           </IconButton>
@@ -113,20 +150,23 @@ export default function Dashboard() {
           selectedSignals={selectedSignals}
           setSelectedSignals={setSelectedSignals}
           onExport={handleExport}
+          onRefresh={handleRefresh}
         />
       )}
 
       <Box sx={{ p: 3 }}>
         <Grid container spacing={3}>
+          {/* Metric Cards */}
           {latestData.map((item) => (
             <Grid item xs={12} sm={6} md={4} lg={2} key={item.signal_name}>
               <MetricCard data={item} />
             </Grid>
           ))}
 
+          {/* Time Series Charts */}
           {selectedSignals.map((signal) => (
-            <Grid item xs={12} md={6} key={signal}>
-              <Paper sx={{ p: 2, bgcolor: '#1a1f3a', color: '#fff' }}>
+            <Grid item xs={12} lg={6} key={signal}>
+              <Paper sx={{ p: 2, bgcolor: '#1a1f3a', color: '#fff', borderRadius: 2 }}>
                 <TimeSeriesChart
                   signal={signal}
                   data={timeSeriesData[signal] || []}
@@ -136,35 +176,60 @@ export default function Dashboard() {
             </Grid>
           ))}
 
-          <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 2, bgcolor: '#1a1f3a', color: '#fff' }}>
+          {/* Stats Panels */}
+          {selectedSignals.map((signal) => (
+            <Grid item xs={12} key={`stats-${signal}`}>
+              <StatsPanel signal={signal} timeRange={timeRange} />
+            </Grid>
+          ))}
+
+          {/* Message Rate */}
+          <Grid item xs={12} lg={8}>
+            <Paper sx={{ p: 2, bgcolor: '#1a1f3a', color: '#fff', borderRadius: 2 }}>
               <MessageRateChart data={messageRate} />
             </Paper>
           </Grid>
 
-          <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 2, bgcolor: '#1a1f3a', color: '#fff' }}>
+          {/* Correlations */}
+          <Grid item xs={12} lg={4}>
+            <Paper sx={{ p: 2, bgcolor: '#1a1f3a', color: '#fff', borderRadius: 2 }}>
               <CorrelationMatrix data={correlations} />
             </Paper>
           </Grid>
 
+          {/* Distributions */}
           {selectedSignals.map((signal) => (
             <Grid item xs={12} md={6} key={`dist-${signal}`}>
-              <Paper sx={{ p: 2, bgcolor: '#1a1f3a', color: '#fff' }}>
+              <Paper sx={{ p: 2, bgcolor: '#1a1f3a', color: '#fff', borderRadius: 2 }}>
                 <DistributionChart signal={signal} timeRange={timeRange} />
               </Paper>
             </Grid>
           ))}
 
+          {/* Anomalies */}
           {selectedSignals.map((signal) => (
             <Grid item xs={12} md={6} key={`anom-${signal}`}>
-              <Paper sx={{ p: 2, bgcolor: '#1a1f3a', color: '#fff' }}>
+              <Paper sx={{ p: 2, bgcolor: '#1a1f3a', color: '#fff', borderRadius: 2 }}>
                 <AnomalyList signal={signal} timeRange={timeRange} />
               </Paper>
             </Grid>
           ))}
         </Grid>
       </Box>
+
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={3000}
+        onClose={() => setNotification({ ...notification, open: false })}
+        anchorOrigin={{ vertical: 'bottom', right: 'right' }}
+      >
+        <Alert 
+          severity={notification.severity}
+          sx={{ bgcolor: '#1a1f3a', color: '#fff' }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
