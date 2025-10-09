@@ -218,11 +218,11 @@ export default function Dashboard() {
       </Box>
 
       <Snackbar
-        open={notification.open}
-        autoHideDuration={3000}
-        onClose={() => setNotification({ ...notification, open: false })}
-        anchorOrigin={{ vertical: 'bottom', right: 'right' }}
-      >
+  open={notification.open}
+  autoHideDuration={3000}
+  onClose={() => setNotification({ ...notification, open: false })}
+  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+>
         <Alert 
           severity={notification.severity}
           sx={{ bgcolor: '#1a1f3a', color: '#fff' }}
