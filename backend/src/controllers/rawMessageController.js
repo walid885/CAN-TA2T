@@ -1,6 +1,6 @@
-const { getPool } = require('../config/database');
+import { getPool } from '../config/database.js';
 
-class RawMessageController {
+export  class RawMessageController {
   async getRawMessages(req, res) {
     const pool = getPool();
     const minutes = parseInt(req.query.minutes) || 5;
@@ -301,4 +301,4 @@ class RawMessageController {
   }
 }
 
-module.exports = new RawMessageController();
+export default new RawMessageController();

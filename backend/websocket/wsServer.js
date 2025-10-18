@@ -1,11 +1,10 @@
-import WebSocket from 'ws';
+import { WebSocketServer } from 'ws';
 import { getPool } from '../src/config/database.js';
 
 let wss;
 
 export function initializeWebSocket(server) {
-  wss = new WebSocket.Server({ server, path: '/ws' });
-
+  wss = new WebSocketServer({ server, path: '/ws' });
   wss.on('connection', (ws) => {
     console.log('WebSocket client connected');
 
