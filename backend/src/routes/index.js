@@ -18,6 +18,12 @@ router.get('/analytics/anomalies/:signal', analyticsController.getAnomalies);
 router.get('/analytics/correlations', analyticsController.getCorrelationMatrix);
 router.get('/analytics/distribution/:signal', analyticsController.getSignalDistribution);
 router.get('/analytics/message-rate', analyticsController.getMessageRate);
+router.get('/analytics/anomalies/:signal', analyticsController.getAnomalies);
+router.get('/analytics/distribution/:signal', analyticsController.getSignalDistribution);
+
+// Signal routes - add :signal param
+router.get('/signals/stats/:signal', signalController.getSignalStats);
+
 
 // Export routes
 router.get('/export/csv', exportController.exportCSV);

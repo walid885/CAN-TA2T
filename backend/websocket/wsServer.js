@@ -1,4 +1,5 @@
-import { WebSocketServer } from 'ws';
+import { WebSocketServer, WebSocket } from 'ws';
+
 import { getPool } from '../src/config/database.js';
 
 let wss;

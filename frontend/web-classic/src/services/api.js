@@ -13,15 +13,15 @@ export const api = {
   getAllTimeSeries: (minutes, bucket) => 
     apiClient.get('/signals/all-timeseries', { params: { minutes, bucket } }),
   getSignalStats: (signal, minutes) =>
-    apiClient.get(`/signals/stats`, { params: { signal, minutes } }),
+    apiClient.get(`/signals/stats/${signal}`, { params: { minutes } }),
 
   // Analytics endpoints
   getCorrelations: (minutes) => 
     apiClient.get('/analytics/correlations', { params: { minutes } }),
   getAnomalies: (signal, minutes, threshold) =>
-    apiClient.get('/analytics/anomalies', { params: { signal, minutes, threshold } }),
+    apiClient.get(`/analytics/anomalies/${signal}`, { params: { minutes, threshold } }),
   getDistribution: (signal, minutes, bins) =>
-    apiClient.get('/analytics/distribution', { params: { signal, minutes, bins } }),
+    apiClient.get(`/analytics/distribution/${signal}`, { params: { minutes, bins } }),
   getMessageRate: (minutes) =>
     apiClient.get('/analytics/message-rate', { params: { minutes } }),
 
@@ -42,8 +42,6 @@ export const api = {
     apiClient.get('/messages/stats', { params: { minutes } }),
   getMessagesByTimeRange: (startTime, endTime) =>
     apiClient.get('/messages/timerange', { params: { startTime, endTime } }),
-
-  // NEW: Advanced filtering endpoints
   filterByCanIds: (canIds, minutes, limit) =>
     apiClient.get('/messages/filter/canids', { 
       params: { canIds: canIds.join(','), minutes, limit } 
