@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// Initialize database
+//Initialize database
 initializePool({
   host: process.env.DB_HOST || 'localhost',
   port: process.env.DB_PORT || 5432,

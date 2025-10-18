@@ -1,9 +1,9 @@
-const WebSocket = require('ws');
-const { getPool } = require('../src/config/database');
+import WebSocket from 'ws';
+import { getPool } from '../src/config/database.js';
 
 let wss;
 
-function initializeWebSocket(server) {
+export function initializeWebSocket(server) {
   wss = new WebSocket.Server({ server, path: '/ws' });
 
   wss.on('connection', (ws) => {
@@ -86,7 +86,7 @@ function initializeWebSocket(server) {
   console.log('WebSocket server initialized on /ws');
 }
 
-function broadcast(data) {
+export function broadcast(data) {
   if (!wss) return;
   
   wss.clients.forEach((client) => {
@@ -95,5 +95,3 @@ function broadcast(data) {
     }
   });
 }
-
-module.exports = { initializeWebSocket, broadcast };
