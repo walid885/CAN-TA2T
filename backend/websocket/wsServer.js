@@ -1,75 +1,99 @@
-import { WebSocketServer } from 'ws';
-import pool from '../src/config/database.js';
+const WebSocket = require('ws');
+const { getPool } = require('../src/config/database');
 
-let clients = new Set();
-let intervalId = null;
+let wss;
 
-export const setupWebSocket = (server) => {
-  const wss = new WebSocketServer({ server, path: '/ws' });
-  
+function initializeWebSocket(server) {
+  wss = new WebSocket.Server({ server, path: '/ws' });
+
   wss.on('connection', (ws) => {
     console.log('WebSocket client connected');
-    clients.add(ws);
-    
-    ws.on('message', async (message) => {
-      try {
-        const data = JSON.parse(message);
-        
-        if (data.type === 'subscribe') {
-          ws.subscriptions = data.signals || [];
-        }
-      } catch (err) {
-        console.error('WebSocket message error:', err);
-      }
+
+    ws.on('message', (message) => {
+      console.log('Received:', message);
     });
-    
+
     ws.on('close', () => {
-      clients.delete(ws);
       console.log('WebSocket client disconnected');
     });
-    
-    ws.on('error', (err) => {
-      console.error('WebSocket error:', err);
-      clients.delete(ws);
+
+    ws.on('error', (error) => {
+      console.error('WebSocket error:', error);
     });
   });
-  
-  startBroadcast();
-  
-  return wss;
-};
 
-const startBroadcast = () => {
-  if (intervalId) clearInterval(intervalId);
-  
-  intervalId = setInterval(async () => {
-    if (clients.size === 0) return;
-    
+  // Poll database and broadcast updates
+  setInterval(async () => {
     try {
-      const result = await pool.query(`
-        SELECT DISTINCT ON (signal_name) 
+      const pool = getPool();
+      
+      // Send latest aggregated data
+      const latestQuery = `
+        SELECT DISTINCT ON (signal_name)
+          timestamp,
+          can_id,
+          signal_type,
           signal_name,
+          raw_value,
           physical_value,
           unit,
-          timestamp,
-          signal_type
+          data_hex
         FROM can_messages
+        WHERE timestamp > NOW() - INTERVAL '10 seconds'
         ORDER BY signal_name, timestamp DESC
-      `);
+      `;
       
-      const data = JSON.stringify({
+      const latestResult = await pool.query(latestQuery);
+      
+      broadcast({
         type: 'update',
-        timestamp: new Date().toISOString(),
-        data: result.rows
+        data: latestResult.rows
       });
+
+      // Send raw messages for live table
+      const rawQuery = `
+        SELECT 
+          EXTRACT(EPOCH FROM timestamp) as timestamp,
+          can_id,
+          signal_type,
+          signal_name,
+          raw_value,
+          physical_value,
+          unit,
+          data_hex
+        FROM can_messages
+        WHERE timestamp > NOW() - INTERVAL '2 seconds'
+        ORDER BY timestamp DESC
+        LIMIT 10
+      `;
       
-      clients.forEach(client => {
-        if (client.readyState === 1) {
-          client.send(data);
-        }
-      });
-    } catch (err) {
-      console.error('Broadcast error:', err);
+      const rawResult = await pool.query(rawQuery);
+      
+      if (rawResult.rows.length > 0) {
+        rawResult.rows.forEach(msg => {
+          broadcast({
+            type: 'raw_message',
+            data: msg
+          });
+        });
+      }
+      
+    } catch (error) {
+      console.error('Error broadcasting updates:', error);
     }
   }, 1000);
-};
+
+  console.log('WebSocket server initialized on /ws');
+}
+
+function broadcast(data) {
+  if (!wss) return;
+  
+  wss.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify(data));
+    }
+  });
+}
+
+module.exports = { initializeWebSocket, broadcast };

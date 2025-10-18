@@ -1,25 +1,30 @@
-import express from 'express';
-import * as signalController from '../controllers/signalController.js';
-import * as analyticsController from '../controllers/analyticsController.js';
-import * as exportController from '../controllers/exportController.js';
-
+const express = require('express');
 const router = express.Router();
 
-// Signal routes
-router.get('/signals/latest', signalController.getLatestSignals);
-router.get('/signals/list', signalController.getSignalList);
-router.get('/signals/:signal/timeseries', signalController.getSignalTimeSeries);
-router.get('/signals/:signal/stats', signalController.getSignalStats);
-router.get('/signals/timeseries/all', signalController.getAllTimeSeries);
+const signalController = require('../controllers/signalController');
+const analyticsController = require('../controllers/analyticsController');
+const exportController = require('../controllers/exportController');
+const rawMessageController = require('../controllers/rawMessageController');
 
-// Analytics routes
-router.get('/analytics/correlations', analyticsController.getCorrelationMatrix);
-router.get('/analytics/:signal/anomalies', analyticsController.getAnomalies);
-router.get('/analytics/:signal/distribution', analyticsController.getSignalDistribution);
+// Existing routes
+router.get('/signals/latest', signalController.getLatestSignals);
+router.get('/signals/timeseries', signalController.getTimeSeries);
+router.get('/signals/all-timeseries', signalController.getAllTimeSeries);
+router.get('/signals/stats', signalController.getSignalStats);
+
+router.get('/analytics/anomalies', analyticsController.getAnomalies);
+router.get('/analytics/correlations', analyticsController.getCorrelations);
+router.get('/analytics/distribution', analyticsController.getDistribution);
 router.get('/analytics/message-rate', analyticsController.getMessageRate);
 
-// Export routes
 router.get('/export/csv', exportController.exportCSV);
 router.get('/export/json', exportController.exportJSON);
 
-export default router;
+// New raw message routes
+router.get('/messages/raw', rawMessageController.getRawMessages);
+router.get('/messages/raw/:canId', rawMessageController.getMessageByCanId);
+router.get('/messages/search', rawMessageController.searchMessages);
+router.get('/messages/stats', rawMessageController.getMessageStats);
+router.get('/messages/timerange', rawMessageController.getMessagesByTimeRange);
+
+module.exports = router;
