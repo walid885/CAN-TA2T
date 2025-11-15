@@ -11,9 +11,14 @@ services:
     volumes:
       - mosquitto_data:/mosquitto/data
       - mosquitto_logs:/mosquitto/log
+    healthcheck:
+      test: ["CMD", "mosquitto_sub", "-t", "$$SYS/#", "-C", "1", "-i", "healthcheck", "-W", "3"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   timescaledb:
-    image: timescale/timescaledb:latest-pg14
+    image: timescale/timescaledb:latest-pg15
     environment:
       POSTGRES_PASSWORD: canmonitor
       POSTGRES_DB: vehicle_monitoring
@@ -21,25 +26,52 @@ services:
       - "5432:5432"
     volumes:
       - timescale_data:/var/lib/postgresql/data
-      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ../database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   backend:
     build:
-      context: .
-      dockerfile: Dockerfile.backend
+      context: ..
+      dockerfile: docker/Dockerfile.backend
     depends_on:
-      - mosquitto
-      - timescaledb
-    ports:
-      - "8080:8080"
+      mosquitto:
+        condition: service_healthy
+      timescaledb:
+        condition: service_healthy
     environment:
       MQTT_BROKER: mosquitto
       DB_HOST: timescaledb
       DB_NAME: vehicle_monitoring
+      POSTGRES_PASSWORD: canmonitor
+    restart: unless-stopped
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@canbus.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - timescaledb
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
     volumes:
-      - ./config:/app/config
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - timescaledb
 
 volumes:
   mosquitto_data:
   mosquitto_logs:
   timescale_data:
+  grafana_data:
